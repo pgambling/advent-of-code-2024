@@ -38,6 +38,9 @@ fn main() {
 }
 
 fn is_safe(nums: &[i32]) -> bool {
+    if nums.len() < 2 {
+        return true;
+    }
     // Check if the numbers are increasing or decreasing
     let mut decreasing = true;
     let mut increasing = true;
