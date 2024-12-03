@@ -11,14 +11,30 @@ fn main() {
 
     let input: String = fs::read_to_string(file_path).expect("Failed to read file");
 
-    let re = Regex::new(r"mul\(([0-9]{1,3}),([0-9]{1,3})\)").unwrap();
+    let re = Regex::new(r"(mul)\(([0-9]{1,3}),([0-9]{1,3})\)|do\(\)|don't\(\)").unwrap();
+    let mut mul_enabled = true;
     let result: i32 = re
         .captures_iter(&input)
         .map(|caps| {
-            let (_, [multiplicand, multiplier]) = caps.extract();
-            let multiplicand: i32 = multiplicand.parse().unwrap();
-            let multiplier: i32 = multiplier.parse().unwrap();
-            multiplicand * multiplier
+            return match caps.get(1) {
+                Some(_) => {
+                    let multiplicand: i32 = caps.get(2).unwrap().as_str().parse().unwrap();
+                    let multiplier: i32 = caps.get(3).unwrap().as_str().parse().unwrap();
+                    if mul_enabled {
+                        multiplicand * multiplier
+                    } else {
+                        0
+                    }
+                }
+                None => {
+                    match caps.get(0).unwrap().as_str() {
+                        "do()" => mul_enabled = true,
+                        "don't()" => mul_enabled = false,
+                        _ => unreachable!(),
+                    }
+                    0
+                }
+            };
         })
         .sum();
 
