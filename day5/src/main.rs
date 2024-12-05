@@ -15,10 +15,11 @@ fn main() {
     let file_path = &args[1];
     let input = read_input(file_path);
 
-    println!("Part1: {}", part1::solve(input));
+    println!("Part1: {}", part1::solve(&input));
+    println!("Part2: {}", part2::solve(&input));
 }
 
-fn read_input<P>(filename: P) -> impl Iterator<Item = String>
+fn read_input<P>(filename: P) -> Vec<String>
 where
     P: AsRef<Path>,
 {
@@ -26,4 +27,5 @@ where
     io::BufReader::new(file)
         .lines()
         .filter_map(|line| line.ok())
+        .collect()
 }

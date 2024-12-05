@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-pub fn solve(input: impl Iterator<Item = String>) -> i32 {
+pub fn solve(input: &[String]) -> i32 {
     let (rules, page_updates) = read_input(input);
 
     page_updates
@@ -30,7 +30,7 @@ fn is_good_update(rules: &HashSet<String>, page_update: &Vec<i32>) -> bool {
     true
 }
 
-fn read_input(input: impl Iterator<Item = String>) -> (HashSet<String>, Vec<Vec<i32>>) {
+fn read_input(input: &[String]) -> (HashSet<String>, Vec<Vec<i32>>) {
     let mut rules: HashSet<String> = HashSet::new();
     let mut page_updates: Vec<Vec<i32>> = Vec::new();
 
@@ -39,7 +39,7 @@ fn read_input(input: impl Iterator<Item = String>) -> (HashSet<String>, Vec<Vec<
         if line.is_empty() {
             loading_rules = false;
         } else if loading_rules {
-            rules.insert(line);
+            rules.insert(line.to_string());
         } else {
             page_updates.push(line.split(',').map(|s| s.parse().unwrap()).collect());
         }
