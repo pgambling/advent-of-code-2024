@@ -7,11 +7,15 @@ pub fn solve(input: &[String]) -> i32 {
         .iter()
         .filter(|page_update| !check_for_rule_violations(&rules, page_update).is_empty())
         .filter_map(|page_update| correct_update(&rules, page_update))
-        .map(|corrected_update| corrected_update[corrected_update.len() / 2])
+        .map(|corrected_update| {
+            corrected_update[corrected_update.len() / 2]
+                .parse::<i32>()
+                .unwrap()
+        })
         .sum()
 }
 
-fn check_for_rule_violations(rules: &HashSet<String>, page_update: &Vec<i32>) -> Vec<String> {
+fn check_for_rule_violations(rules: &HashSet<String>, page_update: &Vec<String>) -> Vec<String> {
     let mut violations: Vec<String> = Vec::new();
     for i in 0..page_update.len() {
         for j in (i + 1)..page_update.len() {
@@ -24,7 +28,7 @@ fn check_for_rule_violations(rules: &HashSet<String>, page_update: &Vec<i32>) ->
     violations
 }
 
-fn correct_update(rules: &HashSet<String>, page_update: &Vec<i32>) -> Option<Vec<i32>> {
+fn correct_update(rules: &HashSet<String>, page_update: &Vec<String>) -> Option<Vec<String>> {
     let mut corrected_update = page_update.clone();
 
     loop {
@@ -35,20 +39,20 @@ fn correct_update(rules: &HashSet<String>, page_update: &Vec<i32>) -> Option<Vec
         for violation in violations {
             let parts = violation
                 .split('|')
-                .map(|s| s.parse().unwrap())
-                .collect::<Vec<i32>>();
-            let a = parts[0];
-            let b = parts[1];
-            let a_index = corrected_update.iter().position(|&x| x == a).unwrap();
-            let b_index = corrected_update.iter().position(|&x| x == b).unwrap();
+                .flat_map(str::parse)
+                .collect::<Vec<String>>();
+            let a = &parts[0];
+            let b = &parts[1];
+            let a_index = corrected_update.iter().position(|c| c == a).unwrap();
+            let b_index = corrected_update.iter().position(|c| c == b).unwrap();
             corrected_update.swap(a_index, b_index);
         }
     }
 }
 
-fn read_input(input: &[String]) -> (HashSet<String>, Vec<Vec<i32>>) {
+fn read_input(input: &[String]) -> (HashSet<String>, Vec<Vec<String>>) {
     let mut rules: HashSet<String> = HashSet::new();
-    let mut page_updates: Vec<Vec<i32>> = Vec::new();
+    let mut page_updates: Vec<Vec<String>> = Vec::new();
 
     let mut loading_rules = true;
     for line in input {
@@ -57,7 +61,11 @@ fn read_input(input: &[String]) -> (HashSet<String>, Vec<Vec<i32>>) {
         } else if loading_rules {
             rules.insert(line.to_string());
         } else {
-            page_updates.push(line.split(',').map(|s| s.parse().unwrap()).collect());
+            page_updates.push(
+                line.split(',')
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            );
         }
     }
     (rules, page_updates)
