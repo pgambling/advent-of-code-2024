@@ -1,6 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-#[derive(Copy, Clone, Eq, Hash, PartialEq)]
+type GuardMap = Vec<Vec<HashSet<CellState>>>;
+
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 enum CellState {
     Open,
     Blocked,
@@ -21,7 +23,7 @@ struct Direction {
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-struct Position(i32, i32);
+struct Position(usize, usize);
 
 const DIRECTIONS: [Direction; 4] = [
     Direction {
@@ -51,123 +53,142 @@ const DIRECTIONS: [Direction; 4] = [
 ];
 
 pub fn solve(input: &[String]) -> usize {
-    let (map, start_pos, start_dir_idx) = load_input(input);
-    let invalid_obstacle_states = [Blocked, StartingPoint, NewObstacle];
-    let total = map.len();
-    let mut count = 0;
-    map.iter()
-        .filter(|(obstacle_pos, obstacle_cell_states)| {
-            if invalid_obstacle_states
+    let (input_map, start_pos, start_dir_idx) = load_input(input);
+    let mut unaltered_result = input_map.clone();
+    run_simulation(&mut unaltered_result, start_pos, start_dir_idx);
+    let visited_states = [Up, Down, Left, Right];
+
+    let mut positions_to_test: Vec<Position> = Vec::new();
+    for row in 0..unaltered_result.len() {
+        for col in 0..unaltered_result[row].len() {
+            let cell_states = &unaltered_result[row][col];
+            if visited_states
                 .iter()
-                .all(|s| !obstacle_cell_states.contains(s))
+                .any(|s| cell_states.contains(s) && !cell_states.contains(&StartingPoint))
             {
-                count += 1;
-                println!("{} of {}", count, total);
-                let mut test_map = map.clone();
-                test_map.get_mut(obstacle_pos).unwrap().insert(NewObstacle);
-                has_cycle(&mut test_map, start_pos, start_dir_idx)
-            } else {
-                false
+                positions_to_test.push(Position(row, col));
             }
+        }
+    }
+
+    positions_to_test
+        .iter()
+        .filter(|obstacle_pos| {
+            let mut test_map = input_map.clone();
+            test_map[obstacle_pos.0][obstacle_pos.1].insert(NewObstacle);
+            let has_cycle = run_simulation(&mut test_map, start_pos, start_dir_idx);
+            has_cycle
         })
         .count()
 }
 
-fn has_cycle(
-    map: &mut HashMap<Position, HashSet<CellState>>,
-    start_pos: Position,
-    start_dir_idx: usize,
-) -> bool {
+fn run_simulation(map: &mut GuardMap, start_pos: Position, start_dir_idx: usize) -> bool {
     let mut current_pos = start_pos;
     let mut dir_idx = start_dir_idx;
+    let max_col = map[0].len() as i32;
+    let max_row = map.len() as i32;
 
     loop {
         let current_dir = &DIRECTIONS[dir_idx];
-        // print_map(&map, &current_pos, DIRECTIONS[dir_idx].map_marker);
-        let possible_next_pos = Position(
-            current_pos.0 + current_dir.dx,
-            current_pos.1 + current_dir.dy,
+        let (next_row, next_col) = (
+            current_pos.0 as i32 + current_dir.dy,
+            current_pos.1 as i32 + current_dir.dx,
         );
 
-        match map.get_mut(&possible_next_pos) {
-            Some(next_cell_state_set) => {
-                // cycle detected, returning to a cell in the same direction previously visited
-                if next_cell_state_set.contains(&current_dir.visited_state) {
-                    return true;
-                } else if next_cell_state_set.contains(&Blocked)
-                    || next_cell_state_set.contains(&NewObstacle)
-                {
-                    dir_idx = (dir_idx + 1) % DIRECTIONS.len()
-                } else {
-                    current_pos = possible_next_pos;
-                    next_cell_state_set.remove(&Open);
-                    next_cell_state_set.insert(current_dir.visited_state);
-                }
-            }
-            _ => return false, // out of bounds
+        if next_row < 0 || next_col < 0 || next_col >= max_col || next_row >= max_row {
+            return false;
+        } // out of bounds
+
+        let possible_next_pos = Position(next_row as usize, next_col as usize);
+
+        let next_cell_state_set = &mut map[possible_next_pos.0][possible_next_pos.1];
+
+        // cycle detected, returning to a cell in the same direction previously visited
+        if next_cell_state_set.contains(&current_dir.visited_state) {
+            return true;
+        } else if next_cell_state_set.contains(&Blocked)
+            || next_cell_state_set.contains(&NewObstacle)
+        {
+            dir_idx = (dir_idx + 1) % DIRECTIONS.len()
+        } else {
+            current_pos = possible_next_pos;
+            next_cell_state_set.remove(&Open);
+            next_cell_state_set.insert(current_dir.visited_state);
         }
+        // print_map(map);
     }
 }
 
-fn load_input(input: &[String]) -> (HashMap<Position, HashSet<CellState>>, Position, usize) {
-    let mut map = HashMap::new();
+fn load_input(input: &[String]) -> (GuardMap, Position, usize) {
     let mut start_dir_idx: usize = 0;
     let mut start_pos = Position(0, 0);
 
-    input.iter().enumerate().for_each(|(y, line)| {
-        line.chars().enumerate().for_each(|(x, c)| {
-            let state = match c {
-                '.' => Open,
-                '#' => Blocked,
-                '^' | '>' | 'v' | '<' => {
-                    start_dir_idx = DIRECTIONS.iter().position(|d| d.map_marker == c).unwrap();
-                    start_pos = Position(x as i32, y as i32);
-                    DIRECTIONS[start_dir_idx].visited_state
-                }
-                _ => unreachable!(),
-            };
-            let mut set = HashSet::new();
-            set.insert(state);
-            map.insert(Position(x as i32, y as i32), set);
-        });
-    });
+    let mut map: GuardMap = input
+        .iter()
+        .enumerate()
+        .map(|(row, line)| {
+            line.chars()
+                .enumerate()
+                .map(|(col, c)| {
+                    let state = match c {
+                        '.' => Open,
+                        '#' => Blocked,
+                        '^' | '>' | 'v' | '<' => {
+                            start_dir_idx =
+                                DIRECTIONS.iter().position(|d| d.map_marker == c).unwrap();
+                            start_pos = Position(row, col);
+                            DIRECTIONS[start_dir_idx].visited_state
+                        }
+                        _ => unreachable!(),
+                    };
+                    let mut set = HashSet::new();
+                    set.insert(state);
+                    set
+                })
+                .collect()
+        })
+        .collect();
 
-    let start_pos_state_set = map.get_mut(&start_pos).unwrap();
-    start_pos_state_set.insert(StartingPoint);
+    map[start_pos.0][start_pos.1].insert(StartingPoint);
 
     return (map, start_pos, start_dir_idx);
 }
 
-// fn print_map(map: &HashMap<Position, CellState>, current_pos: &Position, current_map_marker: char) {
-//     let mut sorted_map = map.iter().collect::<Vec<_>>();
-//     sorted_map.sort_by(|a, b| {
-//         if a.0 .1 != b.0 .1 {
-//             a.0 .1.cmp(&b.0 .1)
-//         } else {
-//             a.0 .0.cmp(&b.0 .0)
-//         }
-//     });
-
+// fn print_map(map: &GuardMap) {
 //     let mut display_map = String::new();
-//     let mut current_row = 0;
-//     sorted_map.iter().for_each(|(pos, state)| {
-//         if pos.1 != current_row {
-//             display_map.push('\n');
-//             current_row = pos.1;
-//         }
-//         let mut ch = match state {
-//             Open => '.',
-//             Blocked => '#',
-//             UpDown => '|',
-//             LeftRight => '-',
-//             BothDirections => '+',
-//             NewObstacle => 'O',
-//         };
 
-//         if *pos == current_pos {
-//             ch = current_map_marker;
+//     for row in 0..map.len() {
+//         for col in 0..map[row].len() {
+//             let cell_state = &map[row][col];
+//             let mut ch = '.';
+
+//             if cell_state.contains(&Open) {
+//                 ch = '.';
+//             } else if cell_state.contains(&Blocked) {
+//                 ch = '#';
+//             } else if cell_state.contains(&Up) {
+//                 ch = '|';
+//             } else if cell_state.contains(&Down) {
+//                 ch = '|';
+//             } else if cell_state.contains(&Left) {
+//                 ch = '-';
+//             } else if cell_state.contains(&Right) {
+//                 ch = '-';
+//             } else if cell_state.contains(&NewObstacle) {
+//                 ch = 'O';
+//             } else if cell_state.contains(&StartingPoint) {
+//                 ch = 'S'
+//             }
+
+//             if (ch == '|' && (cell_state.contains(&Right) || cell_state.contains(&Left)))
+//                 || (ch == '-' && (cell_state.contains(&Up) || cell_state.contains(&Down)))
+//             {
+//                 ch = '+';
+//             }
+
+//             display_map.push(ch);
 //         }
-//         display_map.push(ch);
-//     });
+//         display_map.push('\n');
+//     }
 //     println!("{}\n", display_map);
 // }
