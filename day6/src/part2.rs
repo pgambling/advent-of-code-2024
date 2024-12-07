@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-type GuardMap = Vec<Vec<HashSet<CellState>>>;
+type GuardMap = Vec<Vec<CellState>>;
+type Path = HashMap<Position, HashSet<CellState>>;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 enum CellState {
@@ -10,7 +11,6 @@ enum CellState {
     Down,
     Left,
     Right,
-    NewObstacle,
     StartingPoint,
 }
 use CellState::*;
@@ -54,39 +54,34 @@ const DIRECTIONS: [Direction; 4] = [
 
 pub fn solve(input: &[String]) -> usize {
     let (input_map, start_pos, start_dir_idx) = load_input(input);
-    let mut unaltered_result = input_map.clone();
-    run_simulation(&mut unaltered_result, start_pos, start_dir_idx);
-    let visited_states = [Up, Down, Left, Right];
+    let (_, path_traveled) = run_simulation(
+        &input_map,
+        &start_pos,
+        start_dir_idx,
+        &Position(input_map.len(), input_map[0].len()),
+    );
 
-    let mut positions_to_test: Vec<Position> = Vec::new();
-    for row in 0..unaltered_result.len() {
-        for col in 0..unaltered_result[row].len() {
-            let cell_states = &unaltered_result[row][col];
-            if visited_states
-                .iter()
-                .any(|s| cell_states.contains(s) && !cell_states.contains(&StartingPoint))
-            {
-                positions_to_test.push(Position(row, col));
-            }
-        }
-    }
-
-    positions_to_test
+    path_traveled
         .iter()
-        .filter(|obstacle_pos| {
-            let mut test_map = input_map.clone();
-            test_map[obstacle_pos.0][obstacle_pos.1].insert(NewObstacle);
-            let has_cycle = run_simulation(&mut test_map, start_pos, start_dir_idx);
+        .filter(|(obstacle_pos, _)| {
+            let (has_cycle, _) =
+                run_simulation(&input_map, &start_pos, start_dir_idx, obstacle_pos);
             has_cycle
         })
         .count()
 }
 
-fn run_simulation(map: &mut GuardMap, start_pos: Position, start_dir_idx: usize) -> bool {
-    let mut current_pos = start_pos;
+fn run_simulation(
+    map: &GuardMap,
+    start_pos: &Position,
+    start_dir_idx: usize,
+    obstacle: &Position,
+) -> (bool, Path) {
+    let mut current_pos = *start_pos;
     let mut dir_idx = start_dir_idx;
     let max_col = map[0].len() as i32;
     let max_row = map.len() as i32;
+    let mut path_traveled: Path = HashMap::new();
 
     loop {
         let current_dir = &DIRECTIONS[dir_idx];
@@ -96,26 +91,23 @@ fn run_simulation(map: &mut GuardMap, start_pos: Position, start_dir_idx: usize)
         );
 
         if next_row < 0 || next_col < 0 || next_col >= max_col || next_row >= max_row {
-            return false;
+            return (false, path_traveled);
         } // out of bounds
 
         let possible_next_pos = Position(next_row as usize, next_col as usize);
 
-        let next_cell_state_set = &mut map[possible_next_pos.0][possible_next_pos.1];
-
-        // cycle detected, returning to a cell in the same direction previously visited
-        if next_cell_state_set.contains(&current_dir.visited_state) {
-            return true;
-        } else if next_cell_state_set.contains(&Blocked)
-            || next_cell_state_set.contains(&NewObstacle)
-        {
+        if map[next_row as usize][next_col as usize] == Blocked || possible_next_pos == *obstacle {
             dir_idx = (dir_idx + 1) % DIRECTIONS.len()
         } else {
             current_pos = possible_next_pos;
-            next_cell_state_set.remove(&Open);
-            next_cell_state_set.insert(current_dir.visited_state);
+            let path_to_update = path_traveled.entry(current_pos).or_insert(HashSet::new());
+            // cycle detected, returning to a cell in the same direction previously visited
+            if path_to_update.contains(&current_dir.visited_state) {
+                return (true, path_traveled);
+            } else {
+                path_to_update.insert(current_dir.visited_state);
+            }
         }
-        // print_map(map);
     }
 }
 
@@ -129,27 +121,21 @@ fn load_input(input: &[String]) -> (GuardMap, Position, usize) {
         .map(|(row, line)| {
             line.chars()
                 .enumerate()
-                .map(|(col, c)| {
-                    let state = match c {
-                        '.' => Open,
-                        '#' => Blocked,
-                        '^' | '>' | 'v' | '<' => {
-                            start_dir_idx =
-                                DIRECTIONS.iter().position(|d| d.map_marker == c).unwrap();
-                            start_pos = Position(row, col);
-                            DIRECTIONS[start_dir_idx].visited_state
-                        }
-                        _ => unreachable!(),
-                    };
-                    let mut set = HashSet::new();
-                    set.insert(state);
-                    set
+                .map(|(col, c)| match c {
+                    '.' => Open,
+                    '#' => Blocked,
+                    '^' | '>' | 'v' | '<' => {
+                        start_dir_idx = DIRECTIONS.iter().position(|d| d.map_marker == c).unwrap();
+                        start_pos = Position(row, col);
+                        DIRECTIONS[start_dir_idx].visited_state
+                    }
+                    _ => unreachable!(),
                 })
                 .collect()
         })
         .collect();
 
-    map[start_pos.0][start_pos.1].insert(StartingPoint);
+    map[start_pos.0][start_pos.1] = StartingPoint;
 
     return (map, start_pos, start_dir_idx);
 }
