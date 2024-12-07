@@ -12,6 +12,19 @@ pub fn solve(input: &[String]) -> isize {
 enum Operator {
     Add,
     Multiply,
+    Concat,
+}
+
+fn concat_numbers(a: isize, b: isize) -> isize {
+    format!("{}{}", a, b).parse::<isize>().unwrap()
+}
+
+fn unconcat_numbers(a: isize, b: isize) -> Option<isize> {
+    a.to_string()
+        .strip_suffix(&b.to_string())
+        .unwrap_or(&a.to_string())
+        .parse::<isize>()
+        .ok()
 }
 
 fn find_solution(answer: isize, numbers: &[isize]) -> Option<isize> {
@@ -41,6 +54,18 @@ fn generate_operator_combinations(
     }
 
     let last_number = numbers[numbers.len() - 1];
+
+    if let Some(unconcat_answer) = unconcat_numbers(answer, last_number) {
+        let mut new_ops = ops.to_vec();
+        new_ops.push(Operator::Concat);
+        generate_operator_combinations(
+            unconcat_answer,
+            &numbers[..numbers.len() - 1],
+            &new_ops,
+            all,
+        );
+    }
+
     if answer % last_number != 0 {
         let mut new_ops = ops.to_vec();
         new_ops.push(Operator::Add);
@@ -78,6 +103,7 @@ fn try_operators(answer: isize, numbers: &[isize], operators: &[Operator]) -> bo
         match op {
             Operator::Add => result += n,
             Operator::Multiply => result *= n,
+            Operator::Concat => result = concat_numbers(result, n),
         };
 
         if result > answer {
