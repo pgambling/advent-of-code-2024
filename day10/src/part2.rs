@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-const TRAILHEAD: i32 = 0;
 const TRAILEND: i32 = 9;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -12,12 +11,7 @@ pub fn solve(input: &[String]) -> usize {
     let map: TrailMap = load_input(input);
 
     map.iter()
-        .map(|(pos, level)| {
-            if *level != TRAILHEAD {
-                return 0;
-            }
-            count_trails(&map, *pos, -1)
-        })
+        .map(|(pos, _)| count_trails(&map, *pos, -1))
         .sum()
 }
 

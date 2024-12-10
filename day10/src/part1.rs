@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-const TRAILHEAD: i32 = 0;
 const TRAILEND: i32 = 9;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
@@ -12,10 +11,7 @@ pub fn solve(input: &[String]) -> usize {
     let map: TrailMap = load_input(input);
 
     map.iter()
-        .map(|(pos, level)| {
-            if *level != TRAILHEAD {
-                return 0;
-            }
+        .map(|(pos, _)| {
             let mut trail_ends: HashSet<Position> = HashSet::new();
             find_trail_ends(&map, *pos, -1, &mut trail_ends);
             trail_ends.len()
