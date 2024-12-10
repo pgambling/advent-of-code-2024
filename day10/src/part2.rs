@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-const IMPASSABLE: i32 = -1;
 const TRAILHEAD: i32 = 0;
 const TRAILEND: i32 = 9;
 
@@ -17,7 +16,7 @@ pub fn solve(input: &[String]) -> usize {
             if *level != TRAILHEAD {
                 return 0;
             }
-            count_trails(&map, *pos, IMPASSABLE)
+            count_trails(&map, *pos, -1)
         })
         .sum()
 }
@@ -29,7 +28,7 @@ fn count_trails(map: &TrailMap, pos: Position, previous_level: i32) -> usize {
     }
 
     let current_level = *current_level.unwrap();
-    if current_level == IMPASSABLE || current_level - previous_level != 1 {
+    if current_level - previous_level != 1 {
         return 0;
     }
 
@@ -49,9 +48,7 @@ fn load_input(input: &[String]) -> TrailMap {
     for (y, line) in input.iter().enumerate() {
         for (x, c) in line.chars().enumerate() {
             let pos = Position(x as i32, y as i32);
-            if c == '.' {
-                trail_map.insert(pos, IMPASSABLE);
-            } else {
+            if c != '.' {
                 trail_map.insert(pos, c.to_digit(10).unwrap() as i32);
             }
         }
