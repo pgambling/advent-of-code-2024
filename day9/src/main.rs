@@ -1,4 +1,5 @@
 mod part1;
+mod part2;
 
 use std::env;
 use std::fs::File;
@@ -15,6 +16,7 @@ fn main() {
     let input = read_input(file_path);
 
     println!("Part1: {}", part1::solve(&input));
+    println!("Part2: {}", part2::solve(&input));
 }
 
 fn read_input<P>(filename: P) -> Vec<String>
