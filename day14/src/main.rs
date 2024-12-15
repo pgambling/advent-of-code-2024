@@ -20,10 +20,10 @@ fn main() {
     let part1_duration = start.elapsed();
     println!("Part1: {} (took {:?})", part1_result, part1_duration);
 
-    // let start = std::time::Instant::now();
-    // let part2_result = part2::solve(&input, 101, 103);
-    // let part2_duration = start.elapsed();
-    // println!("Part2: {} (took {:?})", part2_result, part2_duration);
+    let start = std::time::Instant::now();
+    let part2_result = part2::solve(&input, 101, 103);
+    let part2_duration = start.elapsed();
+    println!("Part2: {} (took {:?})", part2_result, part2_duration);
 }
 
 fn read_input<P>(filename: P) -> Vec<String>
