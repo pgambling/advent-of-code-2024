@@ -1,5 +1,5 @@
 mod part1;
-// mod part2;
+mod part2;
 
 use std::env;
 use std::fs::File;
@@ -20,10 +20,10 @@ fn main() {
     let part1_duration = start.elapsed();
     println!("Part1: {} (took {:?})", part1_result, part1_duration);
 
-    // let start = std::time::Instant::now();
-    // let part2_result = part2::solve(&input);
-    // let part2_duration = start.elapsed();
-    // println!("Part2: {} (took {:?})", part2_result, part2_duration);
+    let start = std::time::Instant::now();
+    let part2_result = part2::solve(&input);
+    let part2_duration = start.elapsed();
+    println!("Part2: {} (took {:?})", part2_result, part2_duration);
 }
 
 fn read_input<P>(filename: P) -> Vec<String>
@@ -75,12 +75,37 @@ mod tests {
         }
     }
 
-    // mod part2_tests {
-    //     use super::*;
+    mod part2_tests {
+        use super::*;
 
-    //     #[test]
-    //     fn example() {
-    //         let input = read_input("example.txt");
-    //     }
-    // }
+        #[test]
+        fn example1() {
+            let input = read_input("example1.txt");
+            assert_eq!(part2::solve(&input), 0);
+        }
+
+        #[test]
+        fn example2() {
+            let input = read_input("example2.txt");
+            assert_eq!(part2::solve(&input), 459236326669);
+        }
+
+        #[test]
+        fn example3() {
+            let input = read_input("example3.txt");
+            assert_eq!(part2::solve(&input), 0);
+        }
+
+        #[test]
+        fn example4() {
+            let input = read_input("example4.txt");
+            assert_eq!(part2::solve(&input), 416082282239);
+        }
+
+        #[test]
+        fn all_examples() {
+            let input = read_input("example.txt");
+            assert!(part2::solve(&input) > 480);
+        }
+    }
 }
