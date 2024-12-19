@@ -37,7 +37,6 @@ const RIGHT: Direction = Direction {
 
 pub fn solve(input: &[String]) -> usize {
     let (mut warehouse, moves) = parse_input(input);
-    // println!("Moves: {:?}", moves);
     let (mut robot_x, mut robot_y) = find_robot(&warehouse);
     let directions: HashMap<char, Direction> = HashMap::from([
         (UP.marker, UP),
@@ -46,10 +45,7 @@ pub fn solve(input: &[String]) -> usize {
         (RIGHT.marker, RIGHT),
     ]);
 
-    // println!("Initial warehouse:");
-    // print_warehouse(&warehouse);
     for mov in moves {
-        // println!("Move: {}", mov);
         let direction = directions.get(&mov).unwrap();
         let mut positions_to_update: Vec<(isize, isize)> =
             vec![(robot_x as isize, robot_y as isize)];
@@ -82,7 +78,6 @@ pub fn solve(input: &[String]) -> usize {
                 _ => unreachable!(),
             }
         }
-        // print_warehouse(&warehouse);
     }
 
     calculate_gps_total(&warehouse)
@@ -111,12 +106,12 @@ fn find_robot(warehouse: &Warehouse) -> (usize, usize) {
     (0, 0)
 }
 
-fn print_warehouse(warehouse: &Warehouse) {
-    for row in warehouse {
-        println!("{}", row.iter().collect::<String>());
-    }
-    println!();
-}
+// fn print_warehouse(warehouse: &Warehouse) {
+//     for row in warehouse {
+//         println!("{}", row.iter().collect::<String>());
+//     }
+//     println!();
+// }
 
 fn parse_input(input: &[String]) -> (Warehouse, Moves) {
     let mut warehouse = vec![];
