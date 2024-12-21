@@ -1,205 +1,176 @@
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
+use std::collections::{HashMap, HashSet};
+
 type Maze = Vec<Vec<char>>;
+type Position = (usize, usize);
 
 const OPEN: char = '.';
 const START: char = 'S';
 const END: char = 'E';
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 struct Direction {
     dx: isize,
     dy: isize,
-    left: fn() -> &'static Direction,
-    right: fn() -> &'static Direction,
-    reverse: fn() -> &'static Direction,
-}
-
-fn north() -> &'static Direction {
-    &NORTH
-}
-
-fn east() -> &'static Direction {
-    &EAST
-}
-
-fn south() -> &'static Direction {
-    &SOUTH
-}
-
-fn west() -> &'static Direction {
-    &WEST
+    marker: char,
+    left: char,
+    right: char,
+    reverse: char,
 }
 
 static NORTH: Direction = Direction {
     dx: 0,
     dy: -1,
-    left: west,
-    right: east,
-    reverse: south,
+    marker: '^',
+    left: '<',
+    right: '>',
+    reverse: 'v',
 };
 
 static EAST: Direction = Direction {
     dx: 1,
     dy: 0,
-    left: north,
-    right: south,
-    reverse: west,
+    marker: '>',
+    left: '^',
+    right: 'v',
+    reverse: '<',
 };
 
 static SOUTH: Direction = Direction {
     dx: 0,
     dy: 1,
-    left: east,
-    right: west,
-    reverse: north,
+    marker: 'v',
+    left: '>',
+    right: '<',
+    reverse: '^',
 };
 
 static WEST: Direction = Direction {
     dx: -1,
     dy: 0,
-    left: south,
-    right: north,
-    reverse: east,
+    marker: '<',
+    left: 'v',
+    right: '^',
+    reverse: '>',
 };
 
 #[derive(Debug, Clone, Copy)]
 enum Action {
-    Start(usize, usize),
     Move(usize, usize),
-    Turn(&'static Direction),
+    Turn(char),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 struct Path {
-    path: Vec<Action>,
-    current_position: (usize, usize),
-    current_dir: &'static Direction,
+    current_position: Position,
+    current_dir: char,
+    score: usize,
 }
 
 impl Path {
-    fn new(start: (usize, usize)) -> Self {
+    fn new(current_position: Position, current_dir: char) -> Self {
         Self {
-            path: vec![Action::Start(start.0, start.1)],
-            current_position: start,
-            current_dir: east(),
+            current_position,
+            current_dir,
+            score: 0,
         }
     }
 
-    fn add_action(&mut self, action: Action) {
-        self.path.push(action);
-        match action {
-            Action::Move(x, y) => self.current_position = (x, y),
-            Action::Turn(dir) => self.current_dir = dir,
-            Action::Start(x, y) => self.current_position = (x, y),
+    fn add_action(&mut self, action: &Action) {
+        match *action {
+            Action::Move(x, y) => {
+                self.current_position = (x, y);
+                self.score += 1;
+            }
+            Action::Turn(dir) => {
+                self.current_dir = dir;
+                self.score += 1000;
+            }
         }
     }
 
-    fn add_actions(&mut self, actions: Vec<Action>) {
+    fn add_actions(&mut self, actions: &Vec<Action>) {
         for action in actions {
             self.add_action(action);
         }
     }
 
     fn score(&self) -> usize {
-        self.path
-            .iter()
-            .map(|a| match a {
-                Action::Start(_, _) => 0,
-                Action::Move(_, _) => 1,
-                Action::Turn(_) => 1000,
-            })
-            .sum()
+        self.score
     }
 
-    fn current_position(&self) -> (usize, usize) {
+    fn current_position(&self) -> Position {
         self.current_position.clone()
     }
+}
 
-    fn current_dir(&self) -> &'static Direction {
-        self.current_dir
+impl Ord for Path {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.score.cmp(&self.score)
     }
+}
 
-    fn has_visited_position(&self, position: (usize, usize)) -> bool {
-        self.path.iter().any(|a| match a {
-            Action::Move(x, y) | Action::Start(x, y) => *x == position.0 && *y == position.1,
-            _ => false,
-        })
+impl PartialOrd for Path {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
 pub fn solve(input: &[String]) -> usize {
     let maze = parse_input(input);
     let start = find_start(&maze);
-    let mut path = Path::new(start);
-    run_maze(&maze, &mut path).unwrap_or(0)
+    run_maze(&maze, start, '>')
 }
 
-fn run_maze(maze: &Maze, path: &mut Path) -> Option<usize> {
-    loop {
+fn run_maze(maze: &Maze, start: (usize, usize), start_dir: char) -> usize {
+    let dirs_map: HashMap<char, Direction> =
+        HashMap::from([('^', NORTH), ('>', EAST), ('v', SOUTH), ('<', WEST)]);
+    let mut stack: BinaryHeap<Path> = BinaryHeap::from([Path::new(start, start_dir)]);
+    let mut visited: HashSet<Position> = HashSet::new();
+    while let Some(path) = stack.pop() {
         let current_position = path.current_position();
+        let current_dir = path.current_dir;
+
         if maze[current_position.1][current_position.0] == END {
-            return Some(path.score());
+            return path.score();
         }
 
-        let current_dir = path.current_dir();
-        let mut possible_next_actions = vec![];
-
         // Check each possible direction
+        let current_dir = dirs_map.get(&current_dir).unwrap();
         let directions = [
+            (current_dir.left, vec![Action::Turn(current_dir.left)]),
+            (current_dir.right, vec![Action::Turn(current_dir.right)]),
+            (current_dir.marker, vec![]),
             (
-                (current_dir.left)(),
-                vec![Action::Turn((current_dir.left)())],
-            ),
-            (
-                (current_dir.right)(),
-                vec![Action::Turn((current_dir.right)())],
-            ),
-            (current_dir, vec![]),
-            (
-                (current_dir.reverse)(),
+                current_dir.reverse,
                 vec![
-                    Action::Turn((current_dir.left)()),
-                    Action::Turn((current_dir.left)()),
+                    Action::Turn(current_dir.left),
+                    Action::Turn(current_dir.left),
                 ],
             ),
         ];
 
-        for (dir, turn_actions) in directions {
-            let next_pos = (
+        for (dir_marker, turn_actions) in directions {
+            let dir = dirs_map.get(&dir_marker).unwrap();
+            let next_pos: Position = (
                 current_position.0.wrapping_add(dir.dx as usize),
                 current_position.1.wrapping_add(dir.dy as usize),
             );
 
-            if is_open_position(maze, path, next_pos) {
+            let next_pos_state = maze[next_pos.1][next_pos.0];
+
+            if (next_pos_state == OPEN || next_pos_state == END) && !visited.contains(&(next_pos)) {
                 let mut actions = turn_actions;
                 actions.push(Action::Move(next_pos.0, next_pos.1));
-                possible_next_actions.push(actions);
-            }
-        }
-
-        match possible_next_actions.len() {
-            // Dead end
-            0 => return None,
-            // Single path
-            1 => path.add_actions(possible_next_actions.remove(0)),
-            // Multiple paths - try each branch
-            _ => {
-                return possible_next_actions
-                    .into_iter()
-                    .filter_map(|actions| {
-                        let mut new_path = path.clone();
-                        new_path.add_actions(actions);
-                        run_maze(maze, &mut new_path)
-                    })
-                    .min();
+                let mut new_path = path.clone();
+                new_path.add_actions(&actions);
+                stack.push(new_path);
+                visited.insert(next_pos);
             }
         }
     }
-}
-
-fn is_open_position(maze: &Maze, path: &Path, position: (usize, usize)) -> bool {
-    let (x, y) = position;
-    let position_state = maze[y][x];
-    (position_state == OPEN || position_state == END) && !path.has_visited_position(position)
+    usize::MAX
 }
 
 fn parse_input(input: &[String]) -> Maze {
@@ -216,17 +187,3 @@ fn find_start(maze: &Maze) -> (usize, usize) {
     }
     (0, 0)
 }
-
-// fn print_maze(maze: &Maze, path: &Path) {
-//     for (y, row) in maze.iter().enumerate() {
-//         for (x, &c) in row.iter().enumerate() {
-//             if path.has_visited_position((x, y)) {
-//                 print!("{}", '@');
-//             } else {
-//                 print!("{}", c);
-//             }
-//         }
-//         println!();
-//     }
-//     println!();
-// }
