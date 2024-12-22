@@ -1,5 +1,5 @@
 mod part1;
-// mod part2;
+mod part2;
 
 use std::env;
 use std::fs::File;
@@ -20,10 +20,10 @@ fn main() {
     let part1_duration = start.elapsed();
     println!("Part1: {} (took {:?})", part1_result, part1_duration);
 
-    // let start = std::time::Instant::now();
-    // let part2_result = part2::solve(&input);
-    // let part2_duration = start.elapsed();
-    // println!("Part2: {} (took {:?})", part2_result, part2_duration);
+    let start = std::time::Instant::now();
+    let part2_result = part2::solve(&input);
+    let part2_duration = start.elapsed();
+    println!("Part2: {} (took {:?})", part2_result, part2_duration);
 }
 
 fn read_input<P>(filename: P) -> Vec<String>
@@ -57,8 +57,19 @@ mod tests {
         }
     }
 
-    // mod part2_tests {
-    //     use super::*;
+    mod part2_tests {
+        use super::*;
 
-    // }
+        #[test]
+        fn example_small() {
+            let input = read_input("example1.txt");
+            assert_eq!(part2::solve(&input), 45);
+        }
+
+        #[test]
+        fn example_large() {
+            let input = read_input("example2.txt");
+            assert_eq!(part2::solve(&input), 64);
+        }
+    }
 }
